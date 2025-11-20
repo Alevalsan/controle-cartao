@@ -112,11 +112,8 @@
   </div>
 
   <script>
-    // 🔗 SUA URL DO WEB APP
     const API_URL = "https://script.google.com/macros/s/AKfycbzIXEBA8yaJ_fhDFVmO6pY3g-9Q286bF6Gj7MU8Xz-JK_cNwTLUA0d8VETdyOrs-wQF/exec";
-
-    // 🔑 TOKEN DO CARTÃO 1 (coluna TOKEN_ACESSO da aba ConfigCartoes)
-    const TOKEN_CARTAO1 = "ABC123_CARTAO1";
+    const TOKEN_CARTAO = "ABC123_CARTAO1";
 
     function formatarNumero(n) {
       if (n == null || isNaN(n)) return "-";
@@ -130,7 +127,7 @@
       try {
         const params = new URLSearchParams();
         params.append("action", "getResumoCartao");
-        params.append("token", TOKEN_CARTAO1);
+        params.append("token", TOKEN_CARTAO);
 
         const resp = await fetch(API_URL, {
           method: "POST",
@@ -186,7 +183,7 @@
       try {
         const params = new URLSearchParams();
         params.append("action", "registrarCompra");
-        params.append("token", TOKEN_CARTAO1);
+        params.append("token", TOKEN_CARTAO);
         params.append("valorTotal", valor.toString());
         params.append("qtdParcelas", parcelas.toString());
 
@@ -207,11 +204,9 @@
         }
 
         statusEl.textContent = "Compra registrada com sucesso.";
-        // limpa campos
         document.getElementById("valorCompra").value = "";
         document.getElementById("qtdParcelas").value = "1";
 
-        // atualiza o resumo
         await carregarResumo();
       } catch (err) {
         console.error(err);
@@ -224,7 +219,6 @@
     document.getElementById("btnRegistrar").addEventListener("click", registrarCompra);
     document.getElementById("btnAtualizar").addEventListener("click", carregarResumo);
 
-    // Carrega automaticamente ao abrir
     carregarResumo();
   </script>
 </body>
