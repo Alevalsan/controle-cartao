@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cartão 1 - Controle de Gastos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 22px;
+      margin-top: 0;
+      text-align: center;
+    }
+    .resumo {
+      background: #f0f0f0;
+      border-radius: 6px;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+    }
+    .resumo p {
+      margin: 4px 0;
+    }
+    .status {
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #555;
+      min-height: 18px;
+    }
+    .btn {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cartão 1</h1>
+
+    <div class="status" id="status">Carregando informações...</div>
+
+    <div class="resumo">
+      <p><strong>Usuário:</strong> <span id="nomeUsuario">-</span></p>
+      <p><strong>Limite total:</strong> R$ <span id="limiteTotal">-</span></p>
+      <p><strong>Utilizado:</strong> R$ <span id="limiteUtilizado">-</span></p>
+      <p><strong>Disponível:</strong> R$ <span id="limiteDisponivel">-</span></p>
+      <p><strong>Melhor dia de compra:</strong> <span id="melhorDiaCompra">-</span></p>
+      <p><strong>Vencimento da fatura:</strong> <span id="diaVencimento">-</span></p>
+    </div>
+
+    <button class="btn" id="btnAtualizar">Atualizar</button>
+  </div>
+
+  <script>
+  // SUA URL DO WEB APP DO APPS SCRIPT
+  const API_URL = "SUA_URL_AQUI";
+
+  // TOKEN DO CARTAO 1
+  const TOKEN_CARTAO1 = "SEU_TOKEN_CARTAO1_AQUI";
+
+  async function carregarResumo() {
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("btnAtualizar");
+    statusEl.textContent = "Carregando informações...";
+    btn.disabled = true;
+
+    try {
+      const params = new URLSearchParams();
+      params.append("action", "getResumoCartao");
+      params.append("token", TOKEN_CARTAO1);
+
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+        },
+        body: params.toString()
+      });
+
+      const data = await resp.json();
+
+      if (data.erro) {
+        statusEl.textContent = "Erro: " + (data.mensagem || "não foi possível carregar.");
+        return;
+      }
+
+      document.getElementById("nomeUsuario").textContent = data.nomeUsuario || "-";
+      document.getElementById("limiteTotal").textContent = formatarNumero(data.limiteTotal);
+      document.getElementById("limiteUtilizado").textContent = formatarNumero(data.limiteUtilizado);
+      document.getElementById("limiteDisponivel").textContent = formatarNumero(data.limiteDisponivel);
+      document.getElementById("melhorDiaCompra").textContent = data.melhorDiaCompra || "-";
+      document.getElementById("diaVencimento").textContent = data.diaVencimento || "-";
+
+      statusEl.textContent = "Última atualização feita com sucesso.";
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Erro de conexão com o servidor.";
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function formatarNumero(n) {
+    if (n == null || isNaN(n)) return "-";
+    return Number(n).toFixed(2).replace(".", ",");
+  }
+
+  document.getElementById("btnAtualizar").addEventListener("click", carregarResumo);
+
+  carregarResumo();
+</script>
+
+</body>
+</html>
