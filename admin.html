@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin - Controle de Cartões</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .card {
+      background: #f2f2f2;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+    .card p { margin: 4px 0; }
+    .status {
+      margin-bottom: 15px;
+      font-size: 14px;
+      min-height: 18px;
+      color: #444;
+    }
+    .btn {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .btn:disabled {
+      background: #9ab6d4;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Administrador</h1>
+
+  <div class="status" id="status">Carregando...</div>
+
+  <h2>Cartão 1</h2>
+  <div class="card">
+    <p><strong>Usuário:</strong> <span id="c1_nome">-</span></p>
+    <p><strong>Limite total:</strong> R$ <span id="c1_limite_total">-</span></p>
+    <p><strong>Utilizado:</strong> R$ <span id="c1_utilizado">-</span></p>
+    <p><strong>Disponível:</strong> R$ <span id="c1_disponivel">-</span></p>
+  </div>
+
+  <h2>Cartão 2</h2>
+  <div class="card">
+    <p><strong>Usuário:</strong> <span id="c2_nome">-</span></p>
+    <p><strong>Limite total:</strong> R$ <span id="c2_limite_total">-</span></p>
+    <p><strong>Utilizado:</strong> R$ <span id="c2_utilizado">-</span></p>
+    <p><strong>Disponível:</strong> R$ <span id="c2_disponivel">-</span></p>
+  </div>
+
+  <button class="btn" id="btnAtualizar">Atualizar</button>
+</div>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbzIXEBA8yaJ_fhDFVmO6pY3g-9Q286bF6Gj7MU8Xz-JK_cNwTLUA0d8VETdyOrs-wQF/exec";
+  const TOKEN_CARTAO1 = "ABC123_CARTAO1";
+  const TOKEN_CARTAO2 = "XYZ789_CARTAO2";
+
+  async function lerResumoIndividual(token) {
+    const params = new URLSearchParams();
+    params.append("action", "getResumoCartao");
+    params.append("token", token);
+
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
+    });
+
+    return resp.json();
+  }
+
+  async function carregarAdmin() {
+    const status = document.getElementById("status");
+    status.textContent = "Carregando...";
+
+    try {
+      const c1 = await lerResumoIndividual(TOKEN_CARTAO1);
+      const c2 = await lerResumoIndividual(TOKEN_CARTAO2);
+
+      // Preenche cartão 1
+      document.getElementById("c1_nome").textContent = c1.nomeUsuario;
+      document.getElementById("c1_limite_total").textContent = format(c1.limiteTotal);
+      document.getElementById("c1_utilizado").textContent = format(c1.limiteUtilizado);
+      document.getElementById("c1_disponivel").textContent = format(c1.limiteDisponivel);
+
+      // Preenche cartão 2
+      document.getElementById("c2_nome").textContent = c2.nomeUsuario;
+      document.getElementById("c2_limite_total").textContent = format(c2.limiteTotal);
+      document.getElementById("c2_utilizado").textContent = format(c2.limiteUtilizado);
+      document.getElementById("c2_disponivel").textContent = format(c2.limiteDisponivel);
+
+      status.textContent = "Pronto!";
+    } catch (err) {
+      console.log(err);
+      status.textContent = "Erro ao carregar dados.";
+    }
+  }
+
+  function format(n) {
+    return Number(n).toFixed(2).replace(".", ",");
+  }
+
+  document.getElementById("btnAtualizar").addEventListener("click", carregarAdmin);
+
+  carregarAdmin();
+</script>
+
+</body>
+</html>
