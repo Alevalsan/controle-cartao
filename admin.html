@@ -2,36 +2,43 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin - Controle de Cartões</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f6f6f6;
       margin: 0;
-      padding: 20px;
+      padding: 16px;
     }
     .container {
       max-width: 700px;
       margin: 0 auto;
       background: #fff;
-      padding: 20px;
-      border-radius: 8px;
+      padding: 16px;
+      border-radius: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     h1 {
       text-align: center;
       margin-top: 0;
+      font-size: 20px;
+    }
+    h2 {
+      font-size: 16px;
+      margin-bottom: 8px;
     }
     .card {
       background: #f2f2f2;
-      padding: 15px;
-      border-radius: 6px;
-      margin-bottom: 15px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 14px;
     }
     .card p { margin: 4px 0; }
     .status {
-      margin-bottom: 15px;
-      font-size: 14px;
+      margin-bottom: 10px;
+      font-size: 13px;
       min-height: 18px;
       color: #444;
     }
@@ -40,13 +47,23 @@
       color: white;
       border: none;
       padding: 10px 16px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
-      margin-top: 10px;
+      margin-top: 8px;
+      width: 100%;
     }
     .btn:disabled {
       background: #9ab6d4;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -73,31 +90,34 @@
     <p><strong>Disponível:</strong> R$ <span id="c2_disponivel">-</span></p>
   </div>
 
-  <button class="btn" id="btnAtualizar">Atualizar</button>
+  <button class="btn" id="btnAtualizar">Atualizar Resumo</button>
 
-  <h2 style="margin-top: 30px;">Registrar Pagamento</h2>
-
+  <h2 style="margin-top:22px;">Registrar Pagamento</h2>
   <div class="card">
-    <label>Selecione o cartão:</label>
-    <select id="pg_cartao" style="width:100%; padding:8px; border-radius:5px; margin-bottom:10px;">
+    <label for="pg_cartao">Selecione o cartão:</label>
+    <select id="pg_cartao">
       <option value="">Selecione...</option>
       <option value="CARTAO1">Cartão 1</option>
       <option value="CARTAO2">Cartão 2</option>
     </select>
-  
-    <label>Valor pago (R$):</label>
-    <input type="number" id="pg_valor" inputmode="decimal" step="0.01"
-           style="width:100%; padding:8px; border-radius:5px; margin-bottom:10px;">
-  
+
+    <label for="pg_valor">Valor pago (R$):</label>
+    <input type="number" id="pg_valor" inputmode="decimal" step="0.01" min="0">
+
     <button class="btn" id="btnPagar">Registrar Pagamento</button>
   </div>
-
 </div>
 
 <script>
   const API_URL = "https://script.google.com/macros/s/AKfycbzIXEBA8yaJ_fhDFVmO6pY3g-9Q286bF6Gj7MU8Xz-JK_cNwTLUA0d8VETdyOrs-wQF/exec";
   const TOKEN_CARTAO1 = "ABC123_CARTAO1";
   const TOKEN_CARTAO2 = "XYZ789_CARTAO2";
+  const TOKEN_ADMIN = TOKEN_CARTAO1; // usando token do cartão 1 como "token admin"
+
+  function format(n) {
+    if (n == null || isNaN(n)) return "-";
+    return Number(n).toFixed(2).replace(".", ",");
+  }
 
   async function lerResumoIndividual(token) {
     const params = new URLSearchParams();
@@ -118,82 +138,83 @@
     status.textContent = "Carregando...";
 
     try {
-      const c1 = await lerResumoIndividual(TOKEN_CARTAO1);
-      const c2 = await lerResumoIndividual(TOKEN_CARTAO2);
+      const [c1, c2] = await Promise.all([
+        lerResumoIndividual(TOKEN_CARTAO1),
+        lerResumoIndividual(TOKEN_CARTAO2)
+      ]);
 
-      // Preenche cartão 1
-      document.getElementById("c1_nome").textContent = c1.nomeUsuario;
-      document.getElementById("c1_limite_total").textContent = format(c1.limiteTotal);
-      document.getElementById("c1_utilizado").textContent = format(c1.limiteUtilizado);
-      document.getElementById("c1_disponivel").textContent = format(c1.limiteDisponivel);
+      if (!c1.erro) {
+        document.getElementById("c1_nome").textContent = c1.nomeUsuario;
+        document.getElementById("c1_limite_total").textContent = format(c1.limiteTotal);
+        document.getElementById("c1_utilizado").textContent = format(c1.limiteUtilizado);
+        document.getElementById("c1_disponivel").textContent = format(c1.limiteDisponivel);
+      }
 
-      // Preenche cartão 2
-      document.getElementById("c2_nome").textContent = c2.nomeUsuario;
-      document.getElementById("c2_limite_total").textContent = format(c2.limiteTotal);
-      document.getElementById("c2_utilizado").textContent = format(c2.limiteUtilizado);
-      document.getElementById("c2_disponivel").textContent = format(c2.limiteDisponivel);
+      if (!c2.erro) {
+        document.getElementById("c2_nome").textContent = c2.nomeUsuario;
+        document.getElementById("c2_limite_total").textContent = format(c2.limiteTotal);
+        document.getElementById("c2_utilizado").textContent = format(c2.limiteUtilizado);
+        document.getElementById("c2_disponivel").textContent = format(c2.limiteDisponivel);
+      }
 
-      status.textContent = "Pronto!";
+      status.textContent = "Resumo atualizado.";
     } catch (err) {
-      console.log(err);
+      console.error(err);
       status.textContent = "Erro ao carregar dados.";
     }
-  }
-
-  function format(n) {
-    return Number(n).toFixed(2).replace(".", ",");
   }
 
   document.getElementById("btnAtualizar").addEventListener("click", carregarAdmin);
 
   document.getElementById("btnPagar").addEventListener("click", async () => {
-  const status = document.getElementById("status");
-  const pgCartao = document.getElementById("pg_cartao").value;
-  const pgValor = parseFloat(document.getElementById("pg_valor").value.replace(",", "."));
+    const status = document.getElementById("status");
+    const pgCartao = document.getElementById("pg_cartao").value;
+    const pgValorStr = document.getElementById("pg_valor").value.replace(",", ".");
+    const pgValor = parseFloat(pgValorStr);
 
-  if (!pgCartao) {
-    status.textContent = "Selecione um cartão.";
-    return;
-  }
-  if (!pgValor || pgValor <= 0) {
-    status.textContent = "Digite um valor válido.";
-    return;
-  }
+    if (!pgCartao) {
+      status.textContent = "Selecione um cartão.";
+      return;
+    }
+    if (!pgValor || pgValor <= 0) {
+      status.textContent = "Digite um valor válido.";
+      return;
+    }
 
-  status.textContent = "Processando pagamento...";
+    status.textContent = "Processando pagamento...";
 
-  const params = new URLSearchParams();
-  params.append("action", "registrarPagamento");
-  params.append("token", TOKEN_CARTAO1);   // Admin usa TOKEN DO CARTÃO 1 (ou outro se você quiser criar um token de admin)
-  params.append("idCartao", pgCartao);
-  params.append("valorPagamento", pgValor);
+    try {
+      const params = new URLSearchParams();
+      params.append("action", "registrarPagamento");
+      params.append("token", TOKEN_ADMIN);
+      params.append("idCartao", pgCartao);
+      params.append("valorPagamento", pgValor);
 
-  const resp = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString()
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString()
+      });
+
+      const data = await resp.json();
+
+      if (data.erro) {
+        status.textContent = "Erro: " + data.mensagem;
+        return;
+      }
+
+      status.textContent = "Pagamento registrado com sucesso!";
+      document.getElementById("pg_cartao").value = "";
+      document.getElementById("pg_valor").value = "";
+
+      await carregarAdmin();
+    } catch (err) {
+      console.error(err);
+      status.textContent = "Erro de conexão ao registrar pagamento.";
+    }
   });
-
-  const data = await resp.json();
-
-  if (data.erro) {
-    status.textContent = "Erro: " + data.mensagem;
-    return;
-  }
-
-  status.textContent = "Pagamento registrado com sucesso!";
-
-  document.getElementById("pg_cartao").value = "";
-  document.getElementById("pg_valor").value = "";
-
-  // atualiza os 2 cartões no admin
-  carregarAdmin();
-});
-
 
   carregarAdmin();
 </script>
-
 </body>
 </html>
-
