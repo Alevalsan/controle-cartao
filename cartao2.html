@@ -2,53 +2,81 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cartão 2 - Controle de Gastos</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f5f5f5;
       margin: 0;
-      padding: 20px;
+      padding: 16px;
     }
     .container {
-      max-width: 480px;
+      max-width: 420px;
       margin: 0 auto;
       background: #ffffff;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     h1 {
-      font-size: 22px;
+      font-size: 20px;
       margin-top: 0;
       text-align: center;
     }
-    .resumo {
-      background: #f0f0f0;
-      border-radius: 6px;
-      padding: 10px 15px;
-      margin-bottom: 15px;
-    }
-    .resumo p {
-      margin: 4px 0;
-    }
     .status {
-      margin-bottom: 10px;
-      font-size: 14px;
+      margin-bottom: 12px;
+      font-size: 13px;
       color: #555;
       min-height: 18px;
     }
+    .card {
+      background: #f0f0f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .card p {
+      margin: 4px 0;
+    }
+    .form-section {
+      margin-top: 8px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
     .btn {
+      width: 100%;
       background: #1976d2;
       color: #fff;
       border: none;
-      padding: 8px 14px;
-      border-radius: 4px;
+      padding: 10px;
+      border-radius: 6px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
+      margin-top: 4px;
+    }
+    .btn.secondary {
+      background: #e0e0e0;
+      color: #333;
+      margin-top: 8px;
     }
     .btn:disabled {
-      background: #aaa;
+      background: #9ab6d4;
       cursor: not-allowed;
     }
   </style>
@@ -59,7 +87,7 @@
 
     <div class="status" id="status">Carregando informações...</div>
 
-    <div class="resumo">
+    <div class="card">
       <p><strong>Usuário:</strong> <span id="nomeUsuario">-</span></p>
       <p><strong>Limite total:</strong> R$ <span id="limiteTotal">-</span></p>
       <p><strong>Utilizado:</strong> R$ <span id="limiteUtilizado">-</span></p>
@@ -68,67 +96,136 @@
       <p><strong>Vencimento da fatura:</strong> <span id="diaVencimento">-</span></p>
     </div>
 
-    <button class="btn" id="btnAtualizar">Atualizar</button>
+    <div class="form-section">
+      <h2 style="font-size:16px; margin:0 0 8px 0;">Registrar compra</h2>
+      <div class="form-group">
+        <label for="valorCompra">Valor da compra (R$)</label>
+        <input type="number" id="valorCompra" inputmode="decimal" step="0.01" min="0" placeholder="Ex: 1000,00">
+      </div>
+      <div class="form-group">
+        <label for="qtdParcelas">Quantidade de parcelas</label>
+        <input type="number" id="qtdParcelas" inputmode="numeric" step="1" min="1" value="1">
+      </div>
+      <button class="btn" id="btnRegistrar">Registrar compra</button>
+      <button class="btn secondary" id="btnAtualizar">Atualizar resumo</button>
+    </div>
   </div>
 
   <script>
-  // SUA URL DO WEB APP DO APPS SCRIPT
-  const API_URL = "https://script.google.com/macros/s/AKfycbzIXEBA8yaJ_fhDFVmO6pY3g-9Q286bF6Gj7MU8Xz-JK_cNwTLUA0d8VETdyOrs-wQF/exec";
+    // 🔗 SUA URL DO WEB APP
+    const API_URL = "https://script.google.com/macros/s/AKfycbzIXEBA8yaJ_fhDFVmO6pY3g-9Q286bF6Gj7MU8Xz-JK_cNwTLUA0d8VETdyOrs-wQF/exec";
 
-  // TOKEN DO CARTAO 2
-  const TOKEN_CARTAO2 = "XYZ789_CARTAO2";
+    // 🔑 TOKEN DO CARTÃO 2 (coluna TOKEN_ACESSO da aba ConfigCartoes)
+    const TOKEN_CARTAO2 = "XYZ789_CARTAO2";
 
-  async function carregarResumo() {
-    const statusEl = document.getElementById("status");
-    const btn = document.getElementById("btnAtualizar");
-    statusEl.textContent = "Carregando informações...";
-    btn.disabled = true;
+    function formatarNumero(n) {
+      if (n == null || isNaN(n)) return "-";
+      return Number(n).toFixed(2).replace(".", ",");
+    }
 
-    try {
-      const params = new URLSearchParams();
-      params.append("action", "getResumoCartao");
-      params.append("token", TOKEN_CARTAO2);
+    async function carregarResumo() {
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = "Atualizando resumo...";
 
-      const resp = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-        },
-        body: params.toString()
-      });
+      try {
+        const params = new URLSearchParams();
+        params.append("action", "getResumoCartao");
+        params.append("token", TOKEN_CARTAO2);
 
-      const data = await resp.json();
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+          },
+          body: params.toString()
+        });
 
-      if (data.erro) {
-        statusEl.textContent = "Erro: " + (data.mensagem || "não foi possível carregar.");
+        const data = await resp.json();
+
+        if (data.erro) {
+          statusEl.textContent = "Erro: " + (data.mensagem || "não foi possível carregar.");
+          return;
+        }
+
+        document.getElementById("nomeUsuario").textContent = data.nomeUsuario || "-";
+        document.getElementById("limiteTotal").textContent = formatarNumero(data.limiteTotal);
+        document.getElementById("limiteUtilizado").textContent = formatarNumero(data.limiteUtilizado);
+        document.getElementById("limiteDisponivel").textContent = formatarNumero(data.limiteDisponivel);
+        document.getElementById("melhorDiaCompra").textContent = data.melhorDiaCompra || "-";
+        document.getElementById("diaVencimento").textContent = data.diaVencimento || "-";
+
+        statusEl.textContent = "Resumo atualizado.";
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Erro de conexão com o servidor.";
+      }
+    }
+
+    async function registrarCompra() {
+      const statusEl = document.getElementById("status");
+      const btn = document.getElementById("btnRegistrar");
+
+      const valorInput = document.getElementById("valorCompra").value.replace(",", ".");
+      const parcelasInput = document.getElementById("qtdParcelas").value;
+
+      const valor = parseFloat(valorInput);
+      const parcelas = parseInt(parcelasInput || "1", 10);
+
+      if (!valor || valor <= 0) {
+        statusEl.textContent = "Informe um valor válido.";
+        return;
+      }
+      if (!parcelas || parcelas < 1) {
+        statusEl.textContent = "Quantidade de parcelas inválida.";
         return;
       }
 
-      document.getElementById("nomeUsuario").textContent = data.nomeUsuario || "-";
-      document.getElementById("limiteTotal").textContent = formatarNumero(data.limiteTotal);
-      document.getElementById("limiteUtilizado").textContent = formatarNumero(data.limiteUtilizado);
-      document.getElementById("limiteDisponivel").textContent = formatarNumero(data.limiteDisponivel);
-      document.getElementById("melhorDiaCompra").textContent = data.melhorDiaCompra || "-";
-      document.getElementById("diaVencimento").textContent = data.diaVencimento || "-";
+      btn.disabled = true;
+      statusEl.textContent = "Registrando compra...";
 
-      statusEl.textContent = "Última atualização feita com sucesso.";
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = "Erro de conexão com o servidor.";
-    } finally {
-      btn.disabled = false;
+      try {
+        const params = new URLSearchParams();
+        params.append("action", "registrarCompra");
+        params.append("token", TOKEN_CARTAO2);
+        params.append("valorTotal", valor.toString());
+        params.append("qtdParcelas", parcelas.toString());
+
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+          },
+          body: params.toString()
+        });
+
+        const data = await resp.json();
+
+        if (data.erro) {
+          statusEl.textContent = "Erro ao registrar: " + (data.mensagem || "");
+          btn.disabled = false;
+          return;
+        }
+
+        statusEl.textContent = "Compra registrada com sucesso.";
+        // limpa campos
+        document.getElementById("valorCompra").value = "";
+        document.getElementById("qtdParcelas").value = "1";
+
+        // atualiza o resumo
+        await carregarResumo();
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Erro de conexão ao registrar a compra.";
+      } finally {
+        btn.disabled = false;
+      }
     }
-  }
 
-  function formatarNumero(n) {
-    if (n == null || isNaN(n)) return "-";
-    return Number(n).toFixed(2).replace(".", ",");
-  }
+    document.getElementById("btnRegistrar").addEventListener("click", registrarCompra);
+    document.getElementById("btnAtualizar").addEventListener("click", carregarResumo);
 
-  document.getElementById("btnAtualizar").addEventListener("click", carregarResumo);
-
-  carregarResumo();
-</script>
-
+    // Carrega automaticamente ao abrir
+    carregarResumo();
+  </script>
 </body>
 </html>
