@@ -79,6 +79,27 @@
       background: #9ab6d4;
       cursor: not-allowed;
     }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+    }
+    tfoot td {
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -94,6 +115,32 @@
       <p><strong>Disponível:</strong> R$ <span id="limiteDisponivel">-</span></p>
       <p><strong>Melhor dia de compra:</strong> <span id="melhorDiaCompra">-</span></p>
       <p><strong>Vencimento da fatura:</strong> <span id="diaVencimento">-</span></p>
+    </div>
+
+    <div class="card">
+      <p><strong>Compras parceladas em aberto (2+ parcelas)</strong></p>
+      <p id="infoComprometido">Valor comprometido: R$ - (-% do limite)</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data da Compra</th>
+              <th>Parcelas Abertas</th>
+              <th>Valor Parcela</th>
+              <th>Valor Total</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyCompras">
+            <tr><td colspan="4" style="text-align:center;">Carregando...</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3">Valor comprometido</td>
+              <td id="tfootTotal">R$ -</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
 
     <div class="form-section">
@@ -158,6 +205,66 @@
       }
     }
 
+    async function carregarCompras() {
+      const tbody = document.getElementById("tbodyCompras");
+      const infoComp = document.getElementById("infoComprometido");
+      const tfootTotal = document.getElementById("tfootTotal");
+
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Carregando...</td></tr>';
+
+      try {
+        const params = new URLSearchParams();
+        params.append("action", "getComprasAbertasCartao");
+        params.append("token", TOKEN_CARTAO);
+
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+          },
+          body: params.toString()
+        });
+
+        const data = await resp.json();
+
+        if (data.erro) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Erro ao carregar.</td></tr>';
+          infoComp.textContent = "Valor comprometido: R$ - (-% do limite)";
+          tfootTotal.textContent = "R$ -";
+          return;
+        }
+
+        const compras = data.compras || [];
+
+        if (compras.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhuma compra com 2 ou mais parcelas em aberto.</td></tr>';
+        } else {
+          tbody.innerHTML = "";
+          compras.forEach(c => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${c.dataCompra || "-"}</td>
+              <td>${c.parcelasAbertas}</td>
+              <td>R$ ${formatarNumero(c.valorParcela)}</td>
+              <td>R$ ${formatarNumero(c.valorTotal)}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        const total = data.totalComprometido || 0;
+        const perc = data.percentualComprometido || 0;
+
+        infoComp.textContent = `Valor comprometido: R$ ${formatarNumero(total)} (${perc.toFixed(1)}% do limite)`;
+        tfootTotal.textContent = `R$ ${formatarNumero(total)}`;
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Erro de conexão.</td></tr>';
+        infoComp.textContent = "Valor comprometido: R$ - (-% do limite)";
+        tfootTotal.textContent = "R$ -";
+      }
+    }
+
     async function registrarCompra() {
       const statusEl = document.getElementById("status");
       const btn = document.getElementById("btnRegistrar");
@@ -208,6 +315,7 @@
         document.getElementById("qtdParcelas").value = "1";
 
         await carregarResumo();
+        await carregarCompras();
       } catch (err) {
         console.error(err);
         statusEl.textContent = "Erro de conexão ao registrar a compra.";
@@ -216,10 +324,15 @@
       }
     }
 
-    document.getElementById("btnRegistrar").addEventListener("click", registrarCompra);
-    document.getElementById("btnAtualizar").addEventListener("click", carregarResumo);
+    async function atualizarTudo() {
+      await carregarResumo();
+      await carregarCompras();
+    }
 
-    carregarResumo();
+    document.getElementById("btnRegistrar").addEventListener("click", registrarCompra);
+    document.getElementById("btnAtualizar").addEventListener("click", atualizarTudo);
+
+    atualizarTudo();
   </script>
 </body>
 </html>
